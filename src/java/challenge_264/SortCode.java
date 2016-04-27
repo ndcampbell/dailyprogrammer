@@ -1,11 +1,7 @@
-import com.sun.xml.internal.ws.policy.privateutil.PolicyUtils;
-
 import java.io.BufferedReader;
-import java.io.File;
 import java.io.FileReader;
 import java.io.IOException;
 import java.net.URISyntaxException;
-import java.net.URL;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
@@ -17,7 +13,7 @@ import java.util.List;
 public class SortCode {
 
     public static void main(String[] args) throws IOException, URISyntaxException {
-        List<String> lines = readLines("/User/dcampbell/test.txt");
+        List<String> lines = readLines("test.txt");
         String test = sortCode(lines);
     }
 
@@ -26,30 +22,107 @@ public class SortCode {
         List<String> outsideFunc = new ArrayList<>();
         List<String> insideFunc = new ArrayList<>();
         for (String line: unsorted) {
-            if (line.substring(0, 2) == "  " ) {
-                insideFunc.add(line);
+            if (line.length() >= 2) {
+                if (line.substring(0, 2).trim().length() == 0 ) {
+                    insideFunc.add(line);
+                } else {
+                    outsideFunc.add(line);
+                }
             } else {
                 outsideFunc.add(line);
             }
         }
-        String inside = sortInside(insideFunc);
-        System.out.print(inside);
+        List<String> inside = sortInside(insideFunc);
+        List<String> outside = sortOutside(outsideFunc);
+        String joined = joinList(inside, outside);
+        System.out.println(inside);
+        System.out.println(joined);
+
         return "TEST";
     }
 
-    private static String sortInside(List<String> insideUnsort) {
+    private static String joinList(List<String> inside, List<String> outside ) {
+        String joined;
+
+        for (String line: inside) {
+            outside.add(outside.size()-1, line);
+        }
+        joined = String.join("\n", outside);
+        return joined;
+    }
+
+    private static List<String> sortInside(List<String> insideUnsort) {
         List<String> cTypes = Arrays.asList("bool", "int", "char", "float", "double", "void");
+        List<String> loopTypes = Arrays.asList("for", "while");
         List<String> sorted = new ArrayList<>();
+        List<String> loopSorted = new ArrayList<>();
+        String subType;
         for (String line: insideUnsort) {
-            String subType = line.trim().substring(0, 3);
-            if (cTypes.stream().anyMatch(str -> str.trim().equals(subType))) {
-                sorted.add(1, line);
+            if (line.trim().length() >= 3) {
+                subType = line.trim().substring(0, 3);
+                type_loop:
+                for (String sub: cTypes){
+                    if (sub.equals(subType)) {
+                        sorted.add(0, line);
+                        break type_loop;
+                    }
+                }
+                sorted.add(line);
             } else {
                 sorted.add(line);
             }
-
         }
-        return sorted.toString();
+
+        for (String line: sorted) {
+            System.out.println(line);
+            if (line.trim().length() > 1) {
+                if (line.trim().substring(0, 3).equals("for") || line.trim().substring(0, 5).equals("while")) {
+                    loopSorted.add(0, line);
+                }
+            }
+            if (line.substring(0,2).equals("  ")) {
+                    if (line.trim().substring(0,1).equals("{")) {
+                        loopSorted.add(line);
+                    }
+                    else if (line.trim().substring(0,1).equals("}")) {
+                        loopSorted.add(line);
+                    }
+                }
+            try {
+                if (line.substring(0, 4).equals("    ")) {
+                    loopSorted.add(2, line);
+                }
+            }
+            catch (IndexOutOfBoundsException e) {
+                System.out.print("nothing");
+            }
+        }
+        System.out.println(loopSorted);
+
+
+        return sorted;
+    }
+
+
+    private static List<String> sortOutside(List<String> outsideUnsort) {
+        List<String> sorted = new ArrayList<>();
+        for (String line: outsideUnsort) {
+            if (line.substring(0,1).equals("#")) {
+                sorted.add(0,line);
+            }
+            else if (line.substring(0,1).equals("}")) {
+                sorted.add(line);
+            }
+            else if (line.substring(0,1).equals("{")) {
+                if (sorted.size() >=1 ) {
+                    sorted.add(sorted.size() - 1, line);
+                } else { sorted.add(line); }
+            }
+            else {
+                sorted.add(1, line);
+            }
+        }
+        return sorted;
     }
 
     private static List<String> readLines(String filename) throws IOException{
